@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hangman</title>
+<style>
+  :root{
+    --board:#1b2b22;
+    --chalk:#eef1ea;
+    --chalk-dim:#9fb3a4;
+    --accent:#e2b04a;
+    --wrong:#d9704f;
+    --right:#7fb37a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--board);
+    font-family:'Courier New', monospace;
+    color:var(--chalk);
+    padding:24px;
+  }
+  .card{
+    width:100%;
+    max-width:480px;
+    text-align:center;
+  }
+  h1{
+    letter-spacing:4px;
+    font-weight:700;
+    margin:0 0 4px;
+    font-size:1.6rem;
+  }
+  .sub{
+    color:var(--chalk-dim);
+    font-size:0.85rem;
+    margin-bottom:20px;
+  }
+  #gallows{
+    margin:0 auto 12px;
+    display:block;
+  }
+  #word{
+    font-size:2rem;
+    letter-spacing:10px;
+    margin:16px 0;
+    min-height:2.4rem;
+  }
+  #message{
+    min-height:1.4rem;
+    font-size:0.95rem;
+    margin-bottom:14px;
+  }
+  #message.wrong{color:var(--wrong);}
+  #message.right{color:var(--right);}
+  #keyboard{
+    display:grid;
+    grid-template-columns:repeat(9, 1fr);
+    gap:6px;
+    margin-bottom:18px;
+  }
+  .key{
+    background:transparent;
+    border:1px solid var(--chalk-dim);
+    color:var(--chalk);
+    font-family:inherit;
+    padding:8px 0;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:0.9rem;
+  }
+  .key:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+  .key:disabled{opacity:0.3; cursor:default;}
+  .key.correct{border-color:var(--right); color:var(--right); opacity:0.6;}
+  .key.incorrect{border-color:var(--wrong); color:var(--wrong); opacity:0.6;}
+  #guessesLeft{color:var(--chalk-dim); font-size:0.85rem; margin-bottom:12px;}
+  #playAgain{
+    background:var(--accent);
+    border:none;
+    color:var(--board);
+    font-family:inherit;
+    font-weight:700;
+    padding:10px 22px;
+    border-radius:4px;
+    cursor:pointer;
+    display:none;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>HANGMAN</h1>
+    <div class="sub">CodeAlpha Python Task 1 — HTML edition</div>
+
+    <svg id="gallows" width="160" height="160" viewBox="0 0 160 160">
+      <line x1="10" y1="150" x2="110" y2="150" stroke="#9fb3a4" stroke-width="4"/>
+      <line x1="35" y1="150" x2="35" y2="15" stroke="#9fb3a4" stroke-width="4"/>
+      <line x1="35" y1="15" x2="100" y2="15" stroke="#9fb3a4" stroke-width="4"/>
+      <line x1="100" y1="15" x2="100" y2="35" stroke="#9fb3a4" stroke-width="4"/>
+      <circle id="p-head" cx="100" cy="48" r="13" stroke="#eef1ea" stroke-width="3" fill="none" style="display:none"/>
+      <line id="p-body" x1="100" y1="61" x2="100" y2="95" stroke="#eef1ea" stroke-width="3" style="display:none"/>
+      <line id="p-arm-l" x1="100" y1="70" x2="85" y2="85" stroke="#eef1ea" stroke-width="3" style="display:none"/>
+      <line id="p-arm-r" x1="100" y1="70" x2="115" y2="85" stroke="#eef1ea" stroke-width="3" style="display:none"/>
+      <line id="p-leg-l" x1="100" y1="95" x2="85" y2="120" stroke="#eef1ea" stroke-width="3" style="display:none"/>
+      <line id="p-leg-r" x1="100" y1="95" x2="115" y2="120" stroke="#eef1ea" stroke-width="3" style="display:none"/>
+    </svg>
+
+    <div id="guessesLeft">6 wrong guesses left</div>
+    <div id="word"></div>
+    <div id="message">&nbsp;</div>
+    <div id="keyboard"></div>
+    <button id="playAgain">Play Again</button>
+  </div>
+
+<script>
+  // Same word list and rules as the Python version
+  const WORD_LIST = ["python", "hangman", "computer", "keyboard", "internship"];
+  const MAX_WRONG = 6;
+  const parts = ["p-head","p-body","p-arm-l","p-arm-r","p-leg-l","p-leg-r"];
+
+  let word, guessed, wrong;
+
+  const wordEl = document.getElementById("word");
+  const msgEl = document.getElementById("message");
+  const leftEl = document.getElementById("guessesLeft");
+  const keyboardEl = document.getElementById("keyboard");
+  const playAgainBtn = document.getElementById("playAgain");
+
+  function chooseWord(list){
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  function renderWord(){
+    wordEl.textContent = word.split("").map(l => guessed.includes(l) ? l : "_").join(" ");
+  }
+
+  function buildKeyboard(){
+    keyboardEl.innerHTML = "";
+    "abcdefghijklmnopqrstuvwxyz".split("").forEach(letter => {
+      const btn = document.createElement("button");
+      btn.className = "key";
+      btn.textContent = letter;
+      btn.onclick = () => handleGuess(letter, btn);
+      keyboardEl.appendChild(btn);
+    });
+  }
+
+  function handleGuess(letter, btn){
+    if(guessed.includes(letter)) return;
+    guessed.push(letter);
+    btn.disabled = true;
+
+    if(word.includes(letter)){
+      btn.classList.add("correct");
+      msgEl.textContent = `Good guess! '${letter}' is in the word.`;
+      msgEl.className = "right";
+    } else {
+      wrong++;
+      btn.classList.add("incorrect");
+      msgEl.textContent = `Wrong! '${letter}' is not in the word.`;
+      msgEl.className = "wrong";
+      if(wrong <= parts.length){
+        document.getElementById(parts[wrong-1]).style.display = "block";
+      }
+    }
+
+    renderWord();
+    leftEl.textContent = `${MAX_WRONG - wrong} wrong guesses left`;
+    checkGameEnd();
+  }
+
+  function checkGameEnd(){
+    const won = word.split("").every(l => guessed.includes(l));
+    if(won){
+      msgEl.textContent = `Congratulations! You guessed the word: ${word}`;
+      msgEl.className = "right";
+      endGame();
+    } else if(wrong >= MAX_WRONG){
+      msgEl.textContent = `Game Over! The word was: ${word}`;
+      msgEl.className = "wrong";
+      endGame();
+    }
+  }
+
+  function endGame(){
+    [...keyboardEl.children].forEach(btn => btn.disabled = true);
+    playAgainBtn.style.display = "inline-block";
+  }
+
+  function newGame(){
+    word = chooseWord(WORD_LIST);
+    guessed = [];
+    wrong = 0;
+    msgEl.textContent = "\u00A0";
+    msgEl.className = "";
+    leftEl.textContent = `${MAX_WRONG} wrong guesses left`;
+    parts.forEach(id => document.getElementById(id).style.display = "none");
+    playAgainBtn.style.display = "none";
+    buildKeyboard();
+    renderWord();
+  }
+
+  playAgainBtn.onclick = newGame;
+  newGame();
+</script>
+</body>
+</html>
